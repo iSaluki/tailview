@@ -11,6 +11,12 @@ counter is doing.
 Nothing is installed and nothing leaves the machine. The whole tool is the
 Python standard library plus one page of hand-written HTML, CSS and JavaScript.
 
+<img width="1325" height="523" alt="image" src="https://github.com/user-attachments/assets/fff1bf7f-52bf-49ea-96ee-79e5a583e4a2" />
+<img width="1325" height="523" alt="image" src="https://github.com/user-attachments/assets/08cbcc6e-ba08-46c3-b32c-4f9e20901a5d" />
+<img width="1619" height="989" alt="image" src="https://github.com/user-attachments/assets/3837c050-fe45-47d3-a5b0-01e5227b4c36" />
+<img width="1619" height="748" alt="image" src="https://github.com/user-attachments/assets/e5f17c04-0136-4ea3-aa94-343ec584f901" />
+
+
 ## Run it
 
 ```sh
