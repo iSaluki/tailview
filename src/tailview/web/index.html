@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tailview</title>
+<meta name="description" content="A local dashboard for your Tailscale node's own metrics.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M6 21h4v5H6zM13 13h4v13h-4zM20 17h4v9h-4z' fill='white'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="skip-link" href="#throughput">Skip to the dashboard</a>
+
+<div class="shell">
+
+  <header class="masthead">
+    <span class="wordmark"><span class="tail">tail</span><span class="view">view</span></span>
+
+    <div class="identity">
+      <span class="name" id="node-name">connecting…</span>
+      <span class="sub" id="node-sub">reading the local daemon</span>
+    </div>
+
+    <span class="spacer"></span>
+
+    <div class="masthead-actions">
+      <span class="pulse" id="pulse" data-state="down">
+        <span class="dot"></span><span id="pulse-text">starting</span>
+      </span>
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch between light and dark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <span class="control-label">window</span>
+    <div class="segmented" id="window-picker" role="group" aria-label="Time window">
+      <button type="button" data-window="300" aria-pressed="false">5m</button>
+      <button type="button" data-window="900" aria-pressed="true">15m</button>
+      <button type="button" data-window="3600" aria-pressed="false">1h</button>
+      <button type="button" data-window="all" aria-pressed="false">all</button>
+    </div>
+    <span class="note" id="window-note"></span>
+    <span class="spacer" style="flex:1"></span>
+    <span class="note" id="demo-note" hidden>sample data · no daemon contacted</span>
+  </div>
+
+  <main>
+
+    <!-- The thesis: is this node's traffic going direct, or being relayed? -->
+    <section class="section" id="throughput">
+      <h2 class="eyebrow"><span class="hash">#</span> <span class="what">throughput_by_path</span></h2>
+
+      <div class="hero rise">
+        <div class="panel hero-figure">
+          <div class="panel-head">
+            <h3 class="panel-title">Carried directly</h3>
+          </div>
+          <div class="hero-value" id="hero-value">—<span class="hero-unit">%</span></div>
+          <p class="hero-caption" id="hero-caption">Share of bytes that travelled peer-to-peer instead of through a relay.</p>
+          <div class="meter" id="path-meter" role="img" aria-label="Share of traffic by path"></div>
+          <div class="meter-key" id="path-key"></div>
+          <p class="hero-window" id="hero-window"></p>
+        </div>
+
+        <div class="panel stream-panel">
+          <div class="panel-head">
+            <h3 class="panel-title">Flow by path</h3>
+            <span class="panel-note">inbound above, outbound below</span>
+            <span class="spacer"></span>
+            <button class="ghost-button" id="stream-table-toggle" type="button" aria-pressed="false">table</button>
+          </div>
+          <div class="stream-wrap refreshable" id="stream"></div>
+          <div class="legend" id="stream-legend" role="group" aria-label="Network paths — select to show or hide"></div>
+          <div id="stream-table" hidden></div>
+        </div>
+      </div>
+
+      <div class="tiles rise" id="tiles"></div>
+    </section>
+
+    <section class="section">
+      <div class="split split-wide">
+
+        <div>
+          <h2 class="eyebrow"><span class="hash">#</span> <span class="what">derp_region_latency</span></h2>
+          <div class="panel rise">
+            <div class="panel-head">
+              <h3 class="panel-title">Relay round trips</h3>
+              <span class="panel-note" id="derp-note"></span>
+              <span class="spacer"></span>
+              <button class="ghost-button" id="netcheck-button" type="button">re-run netcheck</button>
+            </div>
+            <div class="refreshable" id="derp-chart"></div>
+            <div class="chips" id="netcheck-chips" style="margin-top:14px"></div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="eyebrow"><span class="hash">#</span> <span class="what">dropped_packets_total</span></h2>
+          <div class="panel rise">
+            <div class="panel-head">
+              <h3 class="panel-title">Dropped packets</h3>
+              <span class="panel-note">by reason, in this window</span>
+              <span class="spacer"></span>
+              <div class="segmented" id="drop-direction" role="group" aria-label="Drop direction">
+                <button type="button" data-direction="inbound" aria-pressed="true">in</button>
+                <button type="button" data-direction="outbound" aria-pressed="false">out</button>
+              </div>
+            </div>
+            <div class="refreshable" id="drops-chart"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="section" id="peers">
+      <h2 class="eyebrow"><span class="hash">#</span> <span class="what">peers</span></h2>
+      <div class="panel rise">
+        <div class="panel-head">
+          <h3 class="panel-title">Peers</h3>
+          <span class="panel-note" id="peers-note"></span>
+          <span class="spacer"></span>
+          <div class="segmented" id="peer-filter" role="group" aria-label="Filter peers">
+            <button type="button" data-filter="all" aria-pressed="true">all</button>
+            <button type="button" data-filter="online" aria-pressed="false">online</button>
+            <button type="button" data-filter="direct" aria-pressed="false">direct</button>
+            <button type="button" data-filter="relay" aria-pressed="false">relayed</button>
+          </div>
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+            </svg>
+            <input type="search" id="peer-search" placeholder="name, address, tag, os" aria-label="Search peers">
+          </label>
+        </div>
+        <div class="table-scroll refreshable" id="peers-table"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="split">
+
+        <div>
+          <h2 class="eyebrow"><span class="hash">#</span> <span class="what">health_messages</span></h2>
+          <div class="panel rise" id="health-panel">
+            <div class="panel-head">
+              <h3 class="panel-title">Health</h3>
+              <span class="panel-note" id="health-note"></span>
+            </div>
+            <div class="refreshable" id="health-body"></div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="eyebrow"><span class="hash">#</span> <span class="what">node_configuration</span></h2>
+          <div class="panel rise">
+            <div class="panel-head">
+              <h3 class="panel-title">This node</h3>
+              <span class="panel-note">from status, prefs and serve</span>
+            </div>
+            <div class="refreshable" id="node-facts"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="section" id="explorer">
+      <h2 class="eyebrow"><span class="hash">#</span> <span class="what">all_series</span></h2>
+      <div class="panel rise">
+        <div class="panel-head">
+          <h3 class="panel-title">Metrics explorer</h3>
+          <span class="panel-note" id="explorer-note"></span>
+          <span class="spacer"></span>
+          <button class="ghost-button" id="raw-toggle" type="button" aria-pressed="false">raw exposition</button>
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+            </svg>
+            <input type="search" id="metric-search" placeholder="filter series" aria-label="Filter metric series">
+          </label>
+        </div>
+        <div class="table-scroll refreshable" id="metrics-table"></div>
+        <pre class="raw" id="raw-metrics" hidden></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="colophon">
+    <span>tailview reads only the daemon on this machine.</span>
+    <span class="spacer" style="flex:1"></span>
+    <span id="sources"></span>
+  </footer>
+
+</div>
+
+<div id="drawer-root"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
